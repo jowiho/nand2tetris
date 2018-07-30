@@ -7,3 +7,5 @@ Follow the course yourself at Coursera:
 See https://www.nand2tetris.org for more information about the course.
 
 Please do not use my solutions for your own assignments in the course. Don't spoil the fun for yourself! After you've completed the assignments on your own, you're more than welcome to compare your solutions with mine and tell me where you think I can improve. :-)
+
+The `projects` directory contains my solutions and follow the same directory structure as the course material.
