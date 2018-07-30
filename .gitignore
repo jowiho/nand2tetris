@@ -1,0 +1,9 @@
+*.cmp
+*.out
+*.tst
+projects/04/*/*.hack
+projects/05/*.hack
+projects/07/*/*/*.asm
+projects/07/*/*/*.vm
+projects/08/*/*/*.asm
+projects/08/*/*/*.vm
