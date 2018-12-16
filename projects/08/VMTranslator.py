@@ -405,7 +405,7 @@ def main(argv):
 	elif len(argv) == 1 and os.path.splitext(argv[0])[1] == ".vm":
 		translate_file(argv[0])
 	else:
-		print("Usage: VMTranslator.py <filename>.vm")
+		print("Usage: VMTranslator.py <filename>.vm | <directory>")
 		sys.exit(1)
 
 if __name__ == '__main__':
