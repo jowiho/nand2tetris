@@ -3,7 +3,6 @@
 import glob, io, os, re, sys
 
 class TokenType:
-	NONE = 'none'
 	KEYWORD = 'keyword'
 	SYMBOL = 'symbol'
 	INT_CONST = 'integerConstant'
@@ -11,18 +10,33 @@ class TokenType:
 	IDENTIFIER = 'identifier'
 
 class JackTokenizer:
-	digits = '0123456789'
-	symbols = r'{}()[].,;+-*/&|<>=~'
-	keywords = ['class', 'constructor', 'function', 'method', 'field', 'static', 'var', 'int', 'char', 'boolean', 'void', 'true', 'false', 'null', 'this', 'let', 'do', 'if', 'else', 'while', 'return']
+	tokens = [
+		{
+			'type': TokenType.STR_CONST,
+			're': r'"(.*?)"'
+		},
+		{
+			'type': TokenType.INT_CONST,
+			're': r'([0-9]+)'
+		},
+		{
+			'type': TokenType.SYMBOL,
+			're': r'([{}()[\]\.,;+\-\*/&|<>=~])'
+		},
+		{
+			'type': TokenType.KEYWORD,
+			're': r'\b(class|constructor|function|method|field|static|var|int|char|boolean|void|true|false|null|this|let|do|if|else|while|return)\b'
+		},
+		{
+			'type': TokenType.IDENTIFIER,
+			're': r'([a-zA-Z_][a-zA-Z_0-9]*)'
+		}
+	]
 
 	def __init__(self, filename):
 		with open(filename, "r") as input_file:
 			self.input = input_file.read()
 		self.pos = 0
-		self.token_type = TokenType.NONE
-
-	def have_token(self):
-		return self.token_type != TokenType.NONE
 
 	def get_token(self):
 		return self.token
@@ -31,77 +45,21 @@ class JackTokenizer:
 		return self.token_type
 
 	def advance(self):
-		self._moveToNextToken()
-		c = self._peek()
-		if c == False:
-			self.token = False
-			self.token_type = TokenType.NONE
-		elif c == '"':
-			self._read_string_constant()
-		elif self.symbols.find(c) >= 0:
-			self._read_symbol()
-		elif re.match('[0-9]', c):
-			self._read_int_constant()
-		elif re.match('[a-zA-Z]', c):
-			self.token = self._read_up_to('[^a-zA-Z0-9_]')
-			self.token_type = TokenType.KEYWORD if self.token in self.keywords else TokenType.IDENTIFIER
+		whitespace_or_comments = re.match(r'(\s+|//.*?\n|/\*.*?\*/)+', self.input[self.pos:], re.DOTALL)
+		if whitespace_or_comments:
+			self.pos += len(whitespace_or_comments.group(0))
+
+		if self.pos >= len(self.input):
+			return False
 		else:
-			raise Exception("Unexpected character: '" + c + "'")
-		return self.token_type != TokenType.NONE
-
-	def _moveToNextToken(self):
-		while self.pos < len(self.input):
-			c = self.input[self.pos]
-			if c.isspace():
-				self.pos += 1
-			elif c == '/' and self._peek(1) == '/':
-				# Single line // comment
-				self._read_up_to('\n')
-			elif c == '/' and self._peek(1) == '*':
-				# Block /* comment */
-				self._skip_block_comment()
-			else:
-				return
-
-	def _read_string_constant(self):
-		self._read_char() # Skip opening quotes
-		self.token_type = TokenType.STR_CONST
-		self.token = self._read_up_to('"')
-		self._read_char() # Skip closing quotes
-
-	def _read_int_constant(self):
-		self.token_type = TokenType.INT_CONST
-		self.token = int(self._read_up_to('[^0-9]'))
-
-	def _read_symbol(self):
-		self.token_type = TokenType.SYMBOL
-		self.token = self._read_char()
-
-	# Skip /* Block comment */
-	def _skip_block_comment(self):
-		self.pos += 2 # Skip /*
-		self._read_up_to(r'\*')
-		self.pos += 1 # Skip *
-		while self._peek() != '/':
-			self._read_up_to(r'\*')
-			self.pos += 1
-		self.pos += 1
-
-	def _peek(self, ahead = 0):
-		return self.input[self.pos + ahead] if self.pos < len(self.input) else False
-
-	def _read_char(self):
-		c = self.input[self.pos]
-		self.pos += 1
-		return c
-
-	def _read_up_to(self, regex):
-		text = ''
-		while self.pos < len(self.input):
-			if re.match(regex, self._peek()):
-				break
-			text += self._read_char()
-		return text
+			for token in self.tokens:
+				m = re.match(token['re'], self.input[self.pos:])
+				if m:
+					self.token_type = token['type']
+					self.token = m.group(1)
+					self.pos += len(m.group(0))
+					return True
+			raise Exception("Unexpected token: " + self.input[self.pos:])
 
 def escapeXml(xml):
 	return str(xml).replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;')
