@@ -315,9 +315,10 @@ class CompilationEngine:
 
 
 def analyze_file(jack_filename):
-	jack_filename = os.path.splitext(jack_filename)[0] + ".jack"
-	tokenizer = JackTokenizer(jack_filename)
-	CompilationEngine(tokenizer).compile()
+	xml_filename = os.path.splitext(jack_filename)[0] + ".xml"
+	with open(xml_filename, "w") as xml_file:
+		tokenizer = JackTokenizer(jack_filename)
+		CompilationEngine(tokenizer, xml_file).compile()
 
 def main(argv):
 	if len(argv) == 1 and os.path.isdir(argv[0]):
