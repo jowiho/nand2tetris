@@ -73,22 +73,35 @@ class CompilationEngine:
 	keyword_constants = ['true', 'false', 'null', 'this']
 	operators = ['+', '-', '*', '/', '&', '|', '<', '>', '=']
 	unary_ops = ['-', '~']
+	indent = ''
 
-	def __init__(self, tokenizer):
+	def __init__(self, tokenizer, output_file):
 		self.tokenizer = tokenizer
+		self.output_file = output_file
+
+	def write(self, line):
+		self.output_file.write('{}{}\n'.format(self.indent, line))
+
+	def write_start_tag(self, name):
+		self.write('<{}>'.format(name))
+		self.indent += '  '
+
+	def write_end_tag(self, name):
+		self.indent = self.indent[:-2]
+		self.write('</{}>'.format(name))
 
 	def compile(self):
 		if tokenize_only:
-			print('<tokens>')
+			self.write_start_tag('tokens')
 			while self.tokenizer.advance():
-					print('<{0}> {1} </{0}>'.format(self.tokenizer.get_token_type(), escapeXml(self.tokenizer.get_token())))
-			print('</tokens>')
+					self.write('<{0}> {1} </{0}>'.format(self.tokenizer.get_token_type(), escapeXml(self.tokenizer.get_token())))
+			self.write_end_tag('tokens')
 		else:
 			self.tokenizer.advance()
 			self.compile_class()
 
 	def compile_class(self):
-		print('<class>')
+		self.write_start_tag('class')
 		self.eat(TokenType.KEYWORD, 'class')
 		self.eat(TokenType.IDENTIFIER)
 		self.eat(TokenType.SYMBOL, '{')
@@ -97,10 +110,10 @@ class CompilationEngine:
 		while self.token() == 'constructor' or self.token() == 'function' or self.token() == 'method':
 			self.compile_subroutine_dec()
 		self.eat(TokenType.SYMBOL, '}')
-		print('</class>')
+		self.write_end_tag('class')
 
 	def compile_class_var_dec(self):
-		print('<classVarDec>')
+		self.write_start_tag('classVarDec')
 		self.eat(TokenType.KEYWORD)        # static|field
 		self.eat_type()
 		self.eat(TokenType.IDENTIFIER)     # name
@@ -108,10 +121,10 @@ class CompilationEngine:
 			self.eat(TokenType.SYMBOL, ',')
 			self.eat(TokenType.IDENTIFIER) # name
 		self.eat(TokenType.SYMBOL, ';')
-		print('</classVarDec>')
+		self.write_end_tag('classVarDec')
 
 	def compile_subroutine_dec(self):
-		print('<subroutineDec>')
+		self.write_start_tag('subroutineDec')
 		self.eat(TokenType.KEYWORD)        # constructor|function|method
 		self.eat_type()
 		self.eat(TokenType.IDENTIFIER)     # name
@@ -119,10 +132,10 @@ class CompilationEngine:
 		self.compile_parameter_list()
 		self.eat(TokenType.SYMBOL, ')')
 		self.compile_subroutine_body()
-		print('</subroutineDec>')
+		self.write_end_tag('subroutineDec')
 
 	def compile_parameter_list(self):
-		print('<parameterList>')
+		self.write_start_tag('parameterList')
 		if self.token_type() == TokenType.KEYWORD:
 			self.eat(TokenType.KEYWORD)    # type
 			self.eat(TokenType.IDENTIFIER) # name
@@ -130,19 +143,19 @@ class CompilationEngine:
 				self.eat(TokenType.SYMBOL, ',')
 				self.eat_type()
 				self.eat(TokenType.IDENTIFIER) # name
-		print('</parameterList>')
+		self.write_end_tag('parameterList')
 
 	def compile_subroutine_body(self):
-		print('<subroutineBody>')
+		self.write_start_tag('subroutineBody')
 		self.eat(TokenType.SYMBOL, '{')
 		while self.token_type() == TokenType.KEYWORD and self.token() == 'var':
 			self.compile_var_dec()
 		self.compile_statements()
 		self.eat(TokenType.SYMBOL, '}')
-		print('</subroutineBody>')
+		self.write_end_tag('subroutineBody')
 
 	def compile_var_dec(self):
-		print('<varDec>')
+		self.write_start_tag('varDec')
 		self.eat(TokenType.KEYWORD)        # var
 		self.eat_type()
 		self.eat(TokenType.IDENTIFIER)     # name
@@ -150,10 +163,10 @@ class CompilationEngine:
 			self.eat(TokenType.SYMBOL, ',')
 			self.eat(TokenType.IDENTIFIER) # name
 		self.eat(TokenType.SYMBOL, ';')
-		print('</varDec>')
+		self.write_end_tag('varDec')
 
 	def compile_statements(self):
-		print('<statements>')
+		self.write_start_tag('statements')
 		while self.token_type() == TokenType.KEYWORD:
 			if self.token() == 'let':
 				self.compile_let_statement()
@@ -167,10 +180,10 @@ class CompilationEngine:
 				self.compile_return_statement()
 			else:
 				break
-		print('</statements>')
+		self.write_end_tag('statements')
 
 	def compile_let_statement(self):
-		print('<letStatement>')
+		self.write_start_tag('letStatement')
 		self.eat(TokenType.KEYWORD)      # let
 		self.eat(TokenType.IDENTIFIER)   # name
 		if self.token_type() == TokenType.SYMBOL and self.token() == '[':
@@ -180,10 +193,10 @@ class CompilationEngine:
 		self.eat(TokenType.SYMBOL, '=')
 		self.compile_expression()        # value
 		self.eat(TokenType.SYMBOL, ';')
-		print('</letStatement>')
+		self.write_end_tag('letStatement')
 
 	def compile_if_statement(self):
-		print('<ifStatement>')
+		self.write_start_tag('ifStatement')
 		self.eat(TokenType.KEYWORD)      # if
 		self.eat(TokenType.SYMBOL, '(')
 		self.compile_expression()        # condition
@@ -196,10 +209,10 @@ class CompilationEngine:
 			self.eat(TokenType.SYMBOL, '{')
 			self.compile_statements()
 			self.eat(TokenType.SYMBOL, '}')
-		print('</ifStatement>')
+		self.write_end_tag('ifStatement')
 
 	def compile_while_statement(self):
-		print('<whileStatement>')
+		self.write_start_tag('whileStatement')
 		self.eat(TokenType.KEYWORD)      # while
 		self.eat(TokenType.SYMBOL, '(')
 		self.compile_expression()        # condition
@@ -207,10 +220,10 @@ class CompilationEngine:
 		self.eat(TokenType.SYMBOL, '{')
 		self.compile_statements()
 		self.eat(TokenType.SYMBOL, '}')
-		print('</whileStatement>')
+		self.write_end_tag('whileStatement')
 
 	def compile_do_statement(self):
-		print('<doStatement>')
+		self.write_start_tag('doStatement')
 		self.eat(TokenType.KEYWORD)      # do
 		self.eat(TokenType.IDENTIFIER)   # subroutineName or classname/varname
 		if self.token_type() == TokenType.SYMBOL and self.token() == '.':
@@ -220,35 +233,35 @@ class CompilationEngine:
 		self.compile_expression_list()
 		self.eat(TokenType.SYMBOL, ')')
 		self.eat(TokenType.SYMBOL, ';')
-		print('</doStatement>')
+		self.write_end_tag('doStatement')
 
 	def compile_return_statement(self):
-		print('<returnStatement>')
+		self.write_start_tag('returnStatement')
 		self.eat(TokenType.KEYWORD)      # return
 		if self.token_type() != TokenType.SYMBOL or self.token() != ';':
 			self.compile_expression()
 		self.eat(TokenType.SYMBOL, ';')
-		print('</returnStatement>')
+		self.write_end_tag('returnStatement')
 
 	def compile_expression_list(self):
-		print('<expressionList>')
+		self.write_start_tag('expressionList')
 		if not (self.token_type() == TokenType.SYMBOL and self.token() == ')'):
 			self.compile_expression()
 			while self.token_type() == TokenType.SYMBOL and self.token() == ',':
 				self.eat(TokenType.SYMBOL, ',')
 				self.compile_expression()
-		print('</expressionList>')
+		self.write_end_tag('expressionList')
 
 	def compile_expression(self):
-		print('<expression>')
+		self.write_start_tag('expression')
 		self.compile_term()
 		if self.token_type() == TokenType.SYMBOL and self.token() in self.operators:
 			self.eat(TokenType.SYMBOL)
 			self.compile_term()
-		print('</expression>')
+		self.write_end_tag('expression')
 
 	def compile_term(self):
-		print('<term>')
+		self.write_start_tag('term')
 		if self.token_type() == TokenType.INT_CONST:
 			self.eat(TokenType.INT_CONST)
 		elif self.token_type() == TokenType.STR_CONST:
@@ -280,10 +293,10 @@ class CompilationEngine:
 				self.eat(TokenType.SYMBOL, '(')
 				self.compile_expression_list()
 				self.eat(TokenType.SYMBOL, ')')
-		print('</term>')
+		self.write_end_tag('term')
 
 	def compile_subroutine_call(self):
-		print('<subroutineCall>')
+		self.write_start_tag('subroutineCall')
 		self.eat(TokenType.IDENTIFIER)      # subroutineName or className
 		if self.token() == '.':
 			self.eat(TokenType.SYMBOL, '.')
@@ -291,7 +304,7 @@ class CompilationEngine:
 		self.eat(TokenType.SYMBOL, '(')
 		self.compile_expression_list()
 		self.eat(TokenType.SYMBOL, ')')
-		print('</subroutineCall>')
+		self.write_end_tag('subroutineCall')
 
 	def eat_type(self):
 		if self.token_type() == TokenType.KEYWORD and (self.token() == 'void' or self.token() in self.types):
@@ -304,7 +317,7 @@ class CompilationEngine:
 			raise Exception("Unexpected token type: " + self.token())
 		if token and self.token() != token:
 			raise Exception("Unexpected token: " + self.token())
-		print('<{0}> {1} </{0}>'.format(self.token_type(), escapeXml(self.token())))
+		self.write('<{0}> {1} </{0}>'.format(self.token_type(), escapeXml(self.token())))
 		self.tokenizer.advance()
 
 	def token_type(self):
