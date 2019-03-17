@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 # TODO: use string interpolation
-# TODO: introduce symbol class
 # TODO: introduce eatSymbol(char)?
 # TODO: introduce tryEatSymbol(char)?
 
@@ -69,6 +68,12 @@ class JackTokenizer:
 def escapeXml(xml):
 	return str(xml).replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;')
 
+class Symbol:
+	def __init__(self, typ, segment, seqno):
+		self.typ = typ
+		self.segment = segment
+		self.seqno = seqno
+
 class SymbolTable:
 	def __init__(self):
 		self.reset()
@@ -77,22 +82,16 @@ class SymbolTable:
 		self.symbols = {}
 		self.count_per_segment = {}
 
-	def add(self, name, type, segment):
-		if not segment in self.count_per_segment:
-			self.count_per_segment[segment] = 0
-		self.symbols[name] = {
-			'type': type,
-			'segment': segment,
-			'seqno': int(self.count_per_segment[segment])
-		}
-		self.count_per_segment[segment] += 1
+	def add(self, name, typ, segment):
+		seqno = self.count(segment)
+		self.symbols[name] = Symbol(typ, segment, seqno)
+		self.count_per_segment[segment] = seqno + 1
 
 	def get(self, name):
 		if name in self.symbols:
-			symbol = self.symbols[name]
-			return (symbol['segment'], symbol['seqno'], symbol['type'])
+			return self.symbols[name]
 		else:
-			return ('', -1, '')
+			return False
 
 	def length(self):
 		return len(self.symbols)
@@ -243,8 +242,8 @@ class CompilationEngine:
 			self.emit('push temp 0')
 			self.emit('pop that 0')
 		else:
-			(segment, index, typ) = self.get_symbol(name)
-			self.emit('pop {} {}'.format(segment, index))
+			symbol = self.get_symbol(name)
+			self.emit('pop {} {}'.format(symbol.segment, symbol.seqno))
 
 	def compile_if_statement(self):
 		label1 = self.next_label()
@@ -288,11 +287,11 @@ class CompilationEngine:
 		name = self.eat(TokenType.IDENTIFIER)
 		if self.token_type() == TokenType.SYMBOL and self.token() == '.':
 			self.eat(TokenType.SYMBOL, '.')
-			(register, index, typ) = self.try_get_symbol(name)
-			if register:
+			symbol = self.try_get_symbol(name)
+			if symbol:
 				# Push object pointer (calling a method)
-				self.emit('push {} {}'.format(register, index))
-				name = typ
+				self.emit('push {} {}'.format(symbol.segment, symbol.seqno))
+				name = symbol.typ
 				arg_count = 1
 			else:
 				# Don't push "this" (calling a function or constructor)
@@ -403,11 +402,11 @@ class CompilationEngine:
 			elif self.token_type() == TokenType.SYMBOL and self.token() == '.':
 				self.eat(TokenType.SYMBOL, '.')
 				# Subroutine call
-				(register, index, typ) = self.try_get_symbol(name)
-				if register:
+				symbol = self.try_get_symbol(name)
+				if symbol:
 					# Push object pointer (calling a method)
-					self.emit('push {} {}'.format(register, index))
-					name = typ
+					self.emit('push {} {}'.format(symbol.segment, symbol.seqno))
+					name = symbol.typ
 					arg_count = 1
 				else:
 					# Don't push "this" (calling a function or constructor)
@@ -430,20 +429,20 @@ class CompilationEngine:
 					self.emit('push that 0')
 
 	def push_variable(self, name):
-		(segment, index, typ) = self.get_symbol(name)
-		self.emit('push {} {}'.format(segment, index))
+		symbol = self.get_symbol(name)
+		self.emit('push {} {}'.format(symbol.segment, symbol.seqno))
 
 	def get_symbol(self, name):
-		(segment, index, typ) = self.try_get_symbol(name)
-		if not segment:
+		symbol = self.try_get_symbol(name)
+		if not symbol:
 			raise Exception("Unknown symbol " + name)
-		return (segment, index, typ)
+		return symbol
 
 	def try_get_symbol(self, name):
-		(segment, index, typ) = self.function_symbol_table.get(name)
-		if not segment:
-			(segment, index, typ) = self.class_symbol_table.get(name)
-		return (segment, index, typ)
+		symbol = self.function_symbol_table.get(name)
+		if not symbol:
+			symbol = self.class_symbol_table.get(name)
+		return symbol
 
 	def eat_type(self):
 		if self.token_type() == TokenType.KEYWORD and (self.token() == 'void' or self.token() in self.types):
