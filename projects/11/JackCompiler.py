@@ -193,9 +193,6 @@ class CompilationEngine:
 			self.emit('push argument 0')
 			self.emit('pop pointer 0')
 		self.compile_statements()
-		if kind == 'constructor':
-			# Return "this"
-			self.emit('push pointer 0')
 		self.eat(TokenType.SYMBOL, '}')
 
 	def compile_var_dec(self):
