@@ -118,10 +118,6 @@ class CompilationEngine:
 	def comment(self, comment):
 		self.output_file.write('// {}\n'.format(comment))
 
-	def dump_symbol_table(self, symbol_table):
-		for name, symbol in symbol_table.symbols.items():
-			self.comment('{:10} {:6} {:6} {}'.format(name, symbol['type'], symbol['segment'], symbol['seqno']))
-
 	def next_label(self):
 		self.label_count += 1
 		return 'L' + str(self.label_count)
@@ -189,7 +185,6 @@ class CompilationEngine:
 		self.emit('function {}.{} {}'.format(self.classname, name, self.function_symbol_table.length()))
 		if kind == 'constructor':
 			# Allocate "this"
-			self.dump_symbol_table(self.class_symbol_table)
 			self.emit('push constant {}'.format(self.class_symbol_table.count('this')))
 			self.emit('call Memory.alloc 1')
 			self.emit('pop pointer 0')
@@ -251,8 +246,6 @@ class CompilationEngine:
 			self.emit('push temp 0')
 			self.emit('pop that 0')
 		else:
-			self.dump_symbol_table(self.class_symbol_table)
-			self.dump_symbol_table(self.function_symbol_table)
 			(segment, index, typ) = self.get_symbol(name)
 			self.emit('pop {} {}'.format(segment, index))
 
