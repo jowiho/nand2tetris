@@ -216,7 +216,6 @@ class CompilationEngine:
 				break
 
 	def compile_let_statement(self):
-		self.comment('let')
 		self.eat(TokenType.KEYWORD)  # let
 		name = self.eat(TokenType.IDENTIFIER)
 		if self.try_eat_symbol('['):
