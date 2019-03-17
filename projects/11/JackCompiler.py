@@ -63,9 +63,6 @@ class JackTokenizer:
 					return True
 			raise Exception("Unexpected token: " + self.input[self.pos:])
 
-def escapeXml(xml):
-	return str(xml).replace('&', '&amp;').replace('>', '&gt;').replace('<', '&lt;')
-
 class Symbol:
 	def __init__(self, typ, segment, seqno):
 		self.typ = typ
