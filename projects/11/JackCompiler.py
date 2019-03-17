@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 # TODO: use string interpolation
+# TODO: merge function call compilation code
 
 import glob, os, re, sys
 
@@ -199,21 +200,21 @@ class CompilationEngine:
 
 	def compile_statements(self):
 		while self.token_type() == TokenType.KEYWORD:
-			if self.token() == 'let':
+			statement = self.eat(TokenType.KEYWORD)
+			if statement == 'let':
 				self.compile_let_statement()
-			elif self.token() == 'if':
+			elif statement == 'if':
 				self.compile_if_statement()
-			elif self.token() == 'while':
+			elif statement == 'while':
 				self.compile_while_statement()
-			elif self.token() == 'do':
+			elif statement == 'do':
 				self.compile_do_statement()
-			elif self.token() == 'return':
+			elif statement == 'return':
 				self.compile_return_statement()
 			else:
 				break
 
 	def compile_let_statement(self):
-		self.eat(TokenType.KEYWORD)  # let
 		name = self.eat(TokenType.IDENTIFIER)
 		if self.try_eat_symbol('['):
 			is_array = True
@@ -238,7 +239,6 @@ class CompilationEngine:
 	def compile_if_statement(self):
 		label1 = self.next_label()
 		label2 = self.next_label()
-		self.eat(TokenType.KEYWORD) # if
 		self.eat_symbol('(')
 		self.compile_expression()
 		self.eat_symbol(')')
@@ -260,7 +260,6 @@ class CompilationEngine:
 		label1 = self.next_label()
 		label2 = self.next_label()
 		self.emit('label ' + label1)
-		self.eat(TokenType.KEYWORD)  # while
 		self.eat_symbol('(')
 		self.compile_expression()
 		self.eat_symbol(')')
@@ -273,7 +272,6 @@ class CompilationEngine:
 		self.emit('label ' + label2)
 
 	def compile_do_statement(self):
-		self.eat(TokenType.KEYWORD)  # do
 		name = self.eat(TokenType.IDENTIFIER)
 		if self.try_eat_symbol('.'):
 			symbol = self.try_get_symbol(name)
@@ -300,7 +298,6 @@ class CompilationEngine:
 		self.emit('pop temp 0')
 
 	def compile_return_statement(self):
-		self.eat(TokenType.KEYWORD)  # return
 		if self.token_type() != TokenType.SYMBOL or self.token() != ';':
 			self.compile_expression()
 		self.eat_symbol(';')
