@@ -182,7 +182,7 @@ class CompilationEngine:
 		self.eat(TokenType.SYMBOL, '{')
 		while self.token_type() == TokenType.KEYWORD and self.token() == 'var':
 			self.compile_var_dec()
-		self.emit('function {}.{} {}'.format(self.classname, name, self.function_symbol_table.length()))
+		self.emit('function {}.{} {}'.format(self.classname, name, self.function_symbol_table.count('local')))
 		if kind == 'constructor':
 			# Allocate "this"
 			self.emit('push constant {}'.format(self.class_symbol_table.count('this')))
