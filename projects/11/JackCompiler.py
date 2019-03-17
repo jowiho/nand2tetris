@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-# TODO: use string interpolation
 # TODO: merge function call compilation code
 
 import glob, os, re, sys
@@ -108,10 +107,10 @@ class CompilationEngine:
 		self.current_class = ''
 
 	def emit(self, line):
-		self.output_file.write('{}\n'.format(line))
+		self.output_file.write(f'{line}\n')
 
 	def comment(self, comment):
-		self.output_file.write('// {}\n'.format(comment))
+		self.output_file.write(f'// {comment}\n')
 
 	def next_label(self):
 		self.label_count += 1
@@ -148,7 +147,7 @@ class CompilationEngine:
 		kind = self.eat(TokenType.KEYWORD)  # constructor|function|method
 		return_type = self.eat_type()
 		name = self.eat(TokenType.IDENTIFIER)
-		self.comment('{} {} {}'.format(kind, return_type, name))
+		self.comment(f'{kind} {return_type} {name}')
 		self.eat_symbol('(')
 		self.compile_parameter_list(kind)
 		self.eat_symbol(')')
@@ -175,10 +174,12 @@ class CompilationEngine:
 		self.eat_symbol('{')
 		while self.token_type() == TokenType.KEYWORD and self.token() == 'var':
 			self.compile_var_dec()
-		self.emit('function {}.{} {}'.format(self.classname, name, self.function_symbol_table.count('local')))
+		local_var_count = self.function_symbol_table.count('local')
+		self.emit(f'function {self.classname}.{name} {local_var_count}')
 		if kind == 'constructor':
 			# Allocate "this"
-			self.emit('push constant {}'.format(self.class_symbol_table.count('this')))
+			size = self.class_symbol_table.count('this')
+			self.emit(f'push constant {size}')
 			self.emit('call Memory.alloc 1')
 			self.emit('pop pointer 0')
 		elif kind == 'method':
@@ -234,7 +235,7 @@ class CompilationEngine:
 			self.emit('pop that 0')
 		else:
 			symbol = self.get_symbol(name)
-			self.emit('pop {} {}'.format(symbol.segment, symbol.seqno))
+			self.emit(f'pop {symbol.segment} {symbol.seqno}')
 
 	def compile_if_statement(self):
 		label1 = self.next_label()
@@ -277,7 +278,7 @@ class CompilationEngine:
 			symbol = self.try_get_symbol(name)
 			if symbol:
 				# Push object pointer (calling a method)
-				self.emit('push {} {}'.format(symbol.segment, symbol.seqno))
+				self.emit(f'push {symbol.segment} {symbol.seqno}')
 				name = symbol.typ
 				arg_count = 1
 			else:
@@ -293,7 +294,7 @@ class CompilationEngine:
 		arg_count += self.compile_expression_list()
 		self.eat_symbol(')')
 		self.eat_symbol(';')
-		self.emit('call {} {}'.format(name, arg_count))
+		self.emit(f'call {name} {arg_count}')
 		# Discard return value
 		self.emit('pop temp 0')
 
@@ -342,13 +343,13 @@ class CompilationEngine:
 	def compile_term(self):
 		if self.token_type() == TokenType.INT_CONST:
 			const = self.eat(TokenType.INT_CONST)
-			self.emit('push constant {}'.format(const))
+			self.emit(f'push constant {const}')
 		elif self.token_type() == TokenType.STR_CONST:
 			string = self.eat(TokenType.STR_CONST)
-			self.emit('push constant {}'.format(len(string)))
+			self.emit(f'push constant {len(string)}')
 			self.emit('call String.new 1')
 			for c in string:
-				self.emit('push constant {}'.format(ord(c)))
+				self.emit(f'push constant {ord(c)}')
 				self.emit('call String.appendChar 2')
 		elif self.token_type() == TokenType.KEYWORD and self.token() == 'true':
 			self.eat(TokenType.KEYWORD)
@@ -379,13 +380,13 @@ class CompilationEngine:
 				self.emit('push pointer 0')
 				arg_count = 1 + self.compile_expression_list()
 				self.eat_symbol(')')
-				self.emit('call {}.{} {}'.format(self.classname, name, arg_count))
+				self.emit('fcall {self.classname}.{name} {arg_count}')
 			elif self.try_eat_symbol('.'):
 				# Subroutine call
 				symbol = self.try_get_symbol(name)
 				if symbol:
 					# Push object pointer (calling a method)
-					self.emit('push {} {}'.format(symbol.segment, symbol.seqno))
+					self.emit(f'push {symbol.segment} {symbol.seqno}')
 					name = symbol.typ
 					arg_count = 1
 				else:
@@ -395,7 +396,7 @@ class CompilationEngine:
 				self.eat_symbol('(')
 				arg_count += self.compile_expression_list()
 				self.eat_symbol(')')
-				self.emit('call {} {}'.format(name, arg_count))
+				self.emit(f'call {name} {arg_count}')
 			else:
 				# Variable
 				self.push_variable(name)
@@ -409,7 +410,7 @@ class CompilationEngine:
 
 	def push_variable(self, name):
 		symbol = self.get_symbol(name)
-		self.emit('push {} {}'.format(symbol.segment, symbol.seqno))
+		self.emit(f'push {symbol.segment} {symbol.seqno}')
 
 	def get_symbol(self, name):
 		symbol = self.try_get_symbol(name)
