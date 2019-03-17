@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 
 # TODO: use string interpolation
-# TODO: introduce eatSymbol(char)?
-# TODO: introduce tryEatSymbol(char)?
+# TODO: introduce tryeat_symbol(char)?
 
 import glob, os, re, sys
 
@@ -129,12 +128,12 @@ class CompilationEngine:
 		self.class_symbol_table.reset()
 		self.eat(TokenType.KEYWORD, 'class')
 		self.classname = self.eat(TokenType.IDENTIFIER)
-		self.eat(TokenType.SYMBOL, '{')
+		self.eat_symbol('{')
 		while self.token() == 'static' or self.token() == 'field':
 			self.compile_class_var_dec()
 		while self.token() == 'constructor' or self.token() == 'function' or self.token() == 'method':
 			self.compile_subroutine_dec()
-		self.eat(TokenType.SYMBOL, '}')
+		self.eat_symbol('}')
 
 	def compile_class_var_dec(self):
 		kind = self.eat(TokenType.KEYWORD)  # static|field
@@ -143,10 +142,10 @@ class CompilationEngine:
 		segment = 'static' if kind == 'static' else 'this'
 		self.class_symbol_table.add(name, typ, segment)
 		while self.token_type() == TokenType.SYMBOL and self.token() == ',':
-			typ = self.eat(TokenType.SYMBOL, ',')
+			typ = self.eat_symbol(',')
 			name = self.eat(TokenType.IDENTIFIER)
 			self.class_symbol_table.add(name, typ, segment)
-		self.eat(TokenType.SYMBOL, ';')
+		self.eat_symbol(';')
 
 	def compile_subroutine_dec(self):
 		self.function_symbol_table.reset()
@@ -154,9 +153,9 @@ class CompilationEngine:
 		return_type = self.eat_type()
 		name = self.eat(TokenType.IDENTIFIER)
 		self.comment('{} {} {}'.format(kind, return_type, name))
-		self.eat(TokenType.SYMBOL, '(')
+		self.eat_symbol('(')
 		self.compile_parameter_list(kind)
-		self.eat(TokenType.SYMBOL, ')')
+		self.eat_symbol(')')
 		self.compile_subroutine_body(kind, name)
 		if return_type == 'void':
 			# Dummy return value
@@ -172,13 +171,13 @@ class CompilationEngine:
 			name = self.eat(TokenType.IDENTIFIER)
 			self.function_symbol_table.add(name, typ, 'argument')
 			while self.token_type() == TokenType.SYMBOL and self.token() == ',':
-				self.eat(TokenType.SYMBOL, ',')
+				self.eat_symbol(',')
 				typ = self.eat_type()
 				name = self.eat(TokenType.IDENTIFIER) 
 				self.function_symbol_table.add(name, typ, 'argument')
 
 	def compile_subroutine_body(self, kind, name):
-		self.eat(TokenType.SYMBOL, '{')
+		self.eat_symbol('{')
 		while self.token_type() == TokenType.KEYWORD and self.token() == 'var':
 			self.compile_var_dec()
 		self.emit('function {}.{} {}'.format(self.classname, name, self.function_symbol_table.count('local')))
@@ -192,7 +191,7 @@ class CompilationEngine:
 			self.emit('push argument 0')
 			self.emit('pop pointer 0')
 		self.compile_statements()
-		self.eat(TokenType.SYMBOL, '}')
+		self.eat_symbol('}')
 
 	def compile_var_dec(self):
 		self.eat(TokenType.KEYWORD) # var
@@ -200,10 +199,10 @@ class CompilationEngine:
 		name = self.eat(TokenType.IDENTIFIER)
 		self.function_symbol_table.add(name, typ, 'local')
 		while self.token_type() == TokenType.SYMBOL and self.token() == ',':
-			self.eat(TokenType.SYMBOL, ',')
+			self.eat_symbol(',')
 			name = self.eat(TokenType.IDENTIFIER)
 			self.function_symbol_table.add(name, typ, 'local')
-		self.eat(TokenType.SYMBOL, ';')
+		self.eat_symbol(';')
 
 	def compile_statements(self):
 		while self.token_type() == TokenType.KEYWORD:
@@ -227,15 +226,15 @@ class CompilationEngine:
 		if self.token_type() == TokenType.SYMBOL and self.token() == '[':
 			is_array = True
 			self.push_variable(name)
-			self.eat(TokenType.SYMBOL, '[')
+			self.eat_symbol('[')
 			self.compile_expression()
-			self.eat(TokenType.SYMBOL, ']')
+			self.eat_symbol(']')
 			self.emit('add')  # Save array element address
 		else:
 			is_array = False
-		self.eat(TokenType.SYMBOL, '=')
+		self.eat_symbol('=')
 		self.compile_expression()
-		self.eat(TokenType.SYMBOL, ';')
+		self.eat_symbol(';')
 		if is_array:
 			self.emit('pop temp 0')
 			self.emit('pop pointer 1')  # Use saved array element address
@@ -249,21 +248,21 @@ class CompilationEngine:
 		label1 = self.next_label()
 		label2 = self.next_label()
 		self.eat(TokenType.KEYWORD) # if
-		self.eat(TokenType.SYMBOL, '(')
+		self.eat_symbol('(')
 		self.compile_expression()
-		self.eat(TokenType.SYMBOL, ')')
+		self.eat_symbol(')')
 		self.emit('not')
 		self.emit('if-goto ' + label1)
-		self.eat(TokenType.SYMBOL, '{')
+		self.eat_symbol('{')
 		self.compile_statements()
-		self.eat(TokenType.SYMBOL, '}')
+		self.eat_symbol('}')
 		self.emit('goto ' + label2)
 		self.emit('label ' + label1)
 		if self.token_type() == TokenType.KEYWORD and self.token() == 'else':
 			self.eat(TokenType.KEYWORD)  # else
-			self.eat(TokenType.SYMBOL, '{')
+			self.eat_symbol('{')
 			self.compile_statements()
-			self.eat(TokenType.SYMBOL, '}')
+			self.eat_symbol('}')
 		self.emit('label ' + label2)
 
 	def compile_while_statement(self):
@@ -271,14 +270,14 @@ class CompilationEngine:
 		label2 = self.next_label()
 		self.emit('label ' + label1)
 		self.eat(TokenType.KEYWORD)  # while
-		self.eat(TokenType.SYMBOL, '(')
+		self.eat_symbol('(')
 		self.compile_expression()
-		self.eat(TokenType.SYMBOL, ')')
+		self.eat_symbol(')')
 		self.emit('not')
 		self.emit('if-goto ' + label2)
-		self.eat(TokenType.SYMBOL, '{')
+		self.eat_symbol('{')
 		self.compile_statements()
-		self.eat(TokenType.SYMBOL, '}')
+		self.eat_symbol('}')
 		self.emit('goto ' + label1)
 		self.emit('label ' + label2)
 
@@ -286,7 +285,7 @@ class CompilationEngine:
 		self.eat(TokenType.KEYWORD)  # do
 		name = self.eat(TokenType.IDENTIFIER)
 		if self.token_type() == TokenType.SYMBOL and self.token() == '.':
-			self.eat(TokenType.SYMBOL, '.')
+			self.eat_symbol('.')
 			symbol = self.try_get_symbol(name)
 			if symbol:
 				# Push object pointer (calling a method)
@@ -302,10 +301,10 @@ class CompilationEngine:
 			self.emit('push pointer 0')
 			name = self.classname + '.' + name
 			arg_count = 1
-		self.eat(TokenType.SYMBOL, '(')
+		self.eat_symbol('(')
 		arg_count += self.compile_expression_list()
-		self.eat(TokenType.SYMBOL, ')')
-		self.eat(TokenType.SYMBOL, ';')
+		self.eat_symbol(')')
+		self.eat_symbol(';')
 		self.emit('call {} {}'.format(name, arg_count))
 		# Discard return value
 		self.emit('pop temp 0')
@@ -314,7 +313,7 @@ class CompilationEngine:
 		self.eat(TokenType.KEYWORD)  # return
 		if self.token_type() != TokenType.SYMBOL or self.token() != ';':
 			self.compile_expression()
-		self.eat(TokenType.SYMBOL, ';')
+		self.eat_symbol(';')
 
 	# TODO: better name (argument_list?)
 	def compile_expression_list(self):
@@ -324,7 +323,7 @@ class CompilationEngine:
 			arg_count += 1
 			while self.token_type() == TokenType.SYMBOL and self.token() == ',':
 				arg_count += 1
-				self.eat(TokenType.SYMBOL, ',')
+				self.eat_symbol(',')
 				self.compile_expression()
 		return arg_count
 
@@ -387,20 +386,20 @@ class CompilationEngine:
 			self.compile_term()
 			self.emit('not')
 		elif self.token_type() == TokenType.SYMBOL and self.token() == '(':
-			self.eat(TokenType.SYMBOL, '(')
+			self.eat_symbol('(')
 			self.compile_expression()
-			self.eat(TokenType.SYMBOL, ')')
+			self.eat_symbol(')')
 		elif self.token_type() == TokenType.IDENTIFIER:
 			name = self.eat(TokenType.IDENTIFIER)
 			if self.token_type() == TokenType.SYMBOL and self.token() == '(':
 				# Push "this" (calling own method)
 				self.emit('push pointer 0')
-				self.eat(TokenType.SYMBOL, '(')
+				self.eat_symbol('(')
 				arg_count = 1 + self.compile_expression_list()
-				self.eat(TokenType.SYMBOL, ')')
+				self.eat_symbol(')')
 				self.emit('call {}.{} {}'.format(self.classname, name, arg_count))
 			elif self.token_type() == TokenType.SYMBOL and self.token() == '.':
-				self.eat(TokenType.SYMBOL, '.')
+				self.eat_symbol('.')
 				# Subroutine call
 				symbol = self.try_get_symbol(name)
 				if symbol:
@@ -412,18 +411,18 @@ class CompilationEngine:
 					# Don't push "this" (calling a function or constructor)
 					arg_count = 0
 				name += '.' + self.eat(TokenType.IDENTIFIER)
-				self.eat(TokenType.SYMBOL, '(')
+				self.eat_symbol('(')
 				arg_count += self.compile_expression_list()
-				self.eat(TokenType.SYMBOL, ')')
+				self.eat_symbol(')')
 				self.emit('call {} {}'.format(name, arg_count))
 			else:
 				# Variable
 				self.push_variable(name)
 				if self.token_type() == TokenType.SYMBOL and self.token() == '[':
 					# Array
-					self.eat(TokenType.SYMBOL, '[')
+					self.eat_symbol('[')
 					self.compile_expression()
-					self.eat(TokenType.SYMBOL, ']')
+					self.eat_symbol(']')
 					self.emit('add')
 					self.emit('pop pointer 1')
 					self.emit('push that 0')
@@ -449,6 +448,9 @@ class CompilationEngine:
 			return self.eat(TokenType.KEYWORD)
 		else:
 			return self.eat(TokenType.IDENTIFIER)
+
+	def eat_symbol(self, symbol):
+		self.eat(TokenType.SYMBOL, symbol)
 
 	def eat(self, token_type, token = False):
 		if self.token_type() != token_type:
