@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-# TODO: merge function call compilation code
-
 import glob, os, re, sys
 
 class TokenType:
@@ -274,6 +272,17 @@ class CompilationEngine:
 
 	def compile_do_statement(self):
 		name = self.eat(TokenType.IDENTIFIER)
+		self.compile_function_call(name)
+		self.eat_symbol(';')
+		# Discard return value
+		self.emit('pop temp 0')
+
+	def compile_return_statement(self):
+		if self.token_type() != TokenType.SYMBOL or self.token() != ';':
+			self.compile_expression()
+		self.eat_symbol(';')
+
+	def compile_function_call(self, name):
 		if self.try_eat_symbol('.'):
 			symbol = self.try_get_symbol(name)
 			if symbol:
@@ -291,20 +300,11 @@ class CompilationEngine:
 			name = self.classname + '.' + name
 			arg_count = 1
 		self.eat_symbol('(')
-		arg_count += self.compile_expression_list()
+		arg_count += self.compile_argument_list()
 		self.eat_symbol(')')
-		self.eat_symbol(';')
 		self.emit(f'call {name} {arg_count}')
-		# Discard return value
-		self.emit('pop temp 0')
 
-	def compile_return_statement(self):
-		if self.token_type() != TokenType.SYMBOL or self.token() != ';':
-			self.compile_expression()
-		self.eat_symbol(';')
-
-	# TODO: better name (argument_list?)
-	def compile_expression_list(self):
+	def compile_argument_list(self):
 		arg_count = 0
 		if not (self.token_type() == TokenType.SYMBOL and self.token() == ')'):
 			self.compile_expression()
@@ -375,28 +375,8 @@ class CompilationEngine:
 			self.eat_symbol(')')
 		elif self.token_type() == TokenType.IDENTIFIER:
 			name = self.eat(TokenType.IDENTIFIER)
-			if self.try_eat_symbol('('):
-				# Push "this" (calling own method)
-				self.emit('push pointer 0')
-				arg_count = 1 + self.compile_expression_list()
-				self.eat_symbol(')')
-				self.emit('fcall {self.classname}.{name} {arg_count}')
-			elif self.try_eat_symbol('.'):
-				# Subroutine call
-				symbol = self.try_get_symbol(name)
-				if symbol:
-					# Push object pointer (calling a method)
-					self.emit(f'push {symbol.segment} {symbol.seqno}')
-					name = symbol.typ
-					arg_count = 1
-				else:
-					# Don't push "this" (calling a function or constructor)
-					arg_count = 0
-				name += '.' + self.eat(TokenType.IDENTIFIER)
-				self.eat_symbol('(')
-				arg_count += self.compile_expression_list()
-				self.eat_symbol(')')
-				self.emit(f'call {name} {arg_count}')
+			if self.token_type() == TokenType.SYMBOL and (self.token() == '.' or self.token() == '('):
+				self.compile_function_call(name)
 			else:
 				# Variable
 				self.push_variable(name)
