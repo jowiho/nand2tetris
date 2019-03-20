@@ -170,8 +170,7 @@ class CompilationEngine:
 
 	def compile_subroutine_body(self, kind, name):
 		self.eat_symbol('{')
-		while self.token_type() == TokenType.KEYWORD and self.token() == 'var':
-			self.compile_var_dec()
+		self.compile_var_declarations()
 		local_var_count = self.function_symbol_table.count('local')
 		self.emit(f'function {self.classname}.{name} {local_var_count}')
 		if kind == 'constructor':
@@ -187,15 +186,15 @@ class CompilationEngine:
 		self.compile_statements()
 		self.eat_symbol('}')
 
-	def compile_var_dec(self):
-		self.eat(TokenType.KEYWORD) # var
-		typ = self.eat_type()
-		name = self.eat(TokenType.IDENTIFIER)
-		self.function_symbol_table.add(name, typ, 'local')
-		while self.try_eat_symbol(','):
+	def compile_var_declarations(self):
+		while self.try_eat_keyword('var'):
+			typ = self.eat_type()
 			name = self.eat(TokenType.IDENTIFIER)
 			self.function_symbol_table.add(name, typ, 'local')
-		self.eat_symbol(';')
+			while self.try_eat_symbol(','):
+				name = self.eat(TokenType.IDENTIFIER)
+				self.function_symbol_table.add(name, typ, 'local')
+			self.eat_symbol(';')
 
 	def compile_statements(self):
 		while self.token_type() == TokenType.KEYWORD:
@@ -248,8 +247,7 @@ class CompilationEngine:
 		self.eat_symbol('}')
 		self.emit('goto ' + label2)
 		self.emit('label ' + label1)
-		if self.token_type() == TokenType.KEYWORD and self.token() == 'else':
-			self.eat(TokenType.KEYWORD)  # else
+		if self.try_eat_keyword('else'):
 			self.eat_symbol('{')
 			self.compile_statements()
 			self.eat_symbol('}')
@@ -351,18 +349,14 @@ class CompilationEngine:
 			for c in string:
 				self.emit(f'push constant {ord(c)}')
 				self.emit('call String.appendChar 2')
-		elif self.token_type() == TokenType.KEYWORD and self.token() == 'true':
-			self.eat(TokenType.KEYWORD)
+		elif self.try_eat_keyword('true'):
 			self.emit('push constant 1')
 			self.emit('neg')
-		elif self.token_type() == TokenType.KEYWORD and self.token() == 'false':
-			self.eat(TokenType.KEYWORD)
+		elif self.try_eat_keyword('false'):
 			self.emit('push constant 0')
-		elif self.token_type() == TokenType.KEYWORD and self.token() == 'null':
-			self.eat(TokenType.KEYWORD)
+		elif self.try_eat_keyword('null'):
 			self.emit('push constant 0')
-		elif self.token_type() == TokenType.KEYWORD and self.token() == 'this':
-			self.eat(TokenType.KEYWORD)
+		elif self.try_eat_keyword('this'):
 			self.emit('push pointer 0')
 		elif self.try_eat_symbol('-'):
 			self.compile_term()
@@ -411,14 +405,20 @@ class CompilationEngine:
 			return self.eat(TokenType.IDENTIFIER)
 
 	def try_eat_symbol(self, symbol):
-		if self.token_type() == TokenType.SYMBOL and self.token() == symbol:
-			self.eat_symbol(symbol)
-			return True
-		else:
-			return False
+		return self.try_eat(TokenType.SYMBOL, symbol)
 
 	def eat_symbol(self, symbol):
 		self.eat(TokenType.SYMBOL, symbol)
+
+	def try_eat_keyword(self, keyword):
+		return self.try_eat(TokenType.KEYWORD, keyword)
+
+	def try_eat(self, token_type, token):
+		if self.token_type() == token_type and self.token() == token:
+			self.tokenizer.advance()
+			return True
+		else:
+			return False
 
 	def eat(self, token_type, token = False):
 		if self.token_type() != token_type:
