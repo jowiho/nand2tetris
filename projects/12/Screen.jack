@@ -168,13 +168,40 @@ class Screen {
 
     /* Prerequisites: x1 <= x2 */
     function void drawHorizontalLine(int x1, int x2, int y) {
-        var int x;
+        var int x, bit, address, word;
         let x = x1;
-        while (~(x > x2)) {
-            // TODO: optimize by drawing multiple pixels at once
-            do Screen.drawPixel(x, y);
-            let x = x + 1;
+        let bit = x & 15;
+        let address = 32 * y + (x / 16);
+        let word = screen[address];
+
+        if (color) {
+            while (~(x > x2)) {
+                let word = word | powers[bit];
+                let x = x + 1;
+                let bit = x & 15;
+
+                if (bit = 0) {
+                    let screen[address] = word;
+                    let address = address + 1;
+                    let word = screen[address];
+                }
+            }
         }
+        else {
+            while (~(x > x2)) {
+                let word = word & ~powers[bit];
+                let x = x + 1;
+                let bit = x & 15;
+
+                if (bit = 0) {
+                    let screen[address] = word;
+                    let address = address + 1;
+                    let word = screen[address];
+                }
+            }
+        }
+
+        let screen[address] = word;
         return;
     }
 
